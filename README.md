@@ -46,6 +46,7 @@ ROW_NUMBER() OVER (
 ) AS row_num
 FROM layoffs_staging;
 ```
+<img width="883" height="108" alt="image" src="https://github.com/user-attachments/assets/acb178c9-314b-48f2-a187-d4f4ecbecb65" />
 
 **Filling missing values with a self-join**
 
@@ -67,6 +68,12 @@ WHERE t1.industry IS NULL
 - Missing industries filled where another record of the same company provided the value.
 - Rows with no layoff information removed.
 
+```sql
+SELECT
+    (SELECT COUNT(*) FROM layoffs)          AS raw_rows,
+    (SELECT COUNT(*) FROM layoffs_staging2) AS cleaned_rows;
+```
+<img width="172" height="42" alt="image" src="https://github.com/user-attachments/assets/e096e26e-215e-43f0-aa50-eb787ddd5dbe" />
 
 
 ## Author
