@@ -1,63 +1,75 @@
-# Layoffs Data Cleaning in SQL (MySQL)
+# Layoffs Data Cleaning using MySQL
 
-A practice project. I followed Alex the Analyst's SQL tutorial on a public layoffs dataset and worked through the cleaning steps myself in MySQL. This repo has my script and my notes on the choices it makes.
+A SQL data cleaning project that takes a raw global layoffs dataset and turns it into an analysis-ready table. All work is done in MySQL using a staging-table approach, so the raw data is never modified.
 
-## Data
+## Project Overview
 
-- One table, `layoffs`, with one row per layoff event: company, location, industry, total_laid_off, percentage_laid_off, date, stage, country, funds_raised_millions.
-- Covers 2020 to 2023.
-- Source: [add the link to where you downloaded it].
-- The raw table is never changed. The script copies it into staging tables and cleans the copy.
+The raw layoffs data contains duplicates, inconsistent labels, text-formatted dates, and missing values. This project cleans it step by step so it can support exploratory analysis or dashboards.
 
-## What the script does
+**Goal:** produce a clean, consistent table with reliable dates, categories and no duplicate or empty records.
 
-1. **Staging tables.** Copies `layoffs` into `layoffs_staging`, then into `layoffs_staging2`, so the raw data stays untouched.
-2. **Duplicates.** Numbers each row with `ROW_NUMBER()` over all nine columns inside a CTE. MySQL won't delete from a CTE, so the numbered rows go into `layoffs_staging2` (with a `row_num` column) and the rows where `row_num > 1` are deleted there. I checked one flagged company (Casper) before deleting.
-3. **Standardising text.**
-   - Trimmed spaces from company names.
-   - Merged the different spellings of Crypto in `industry` into one.
-   - Removed a trailing full stop from "United States." in `country`.
-   - Fixed two city names that had broken characters (Düsseldorf and Florianópolis).
-4. **Dates.** The date column was imported as text. I converted it with `STR_TO_DATE(..., '%m/%d/%Y')`, then changed the column type to `DATE`.
-5. **Blanks and nulls.**
-   - Turned blank `industry` values into NULL.
-   - Filled missing industries from another row for the same company, using a self-join.
-   - Deleted rows where both `total_laid_off` and `percentage_laid_off` are NULL.
-6. **Tidy up.** Dropped the `row_num` helper column.
+## Tools & Skills Demonstrated
 
-## Row counts
+- **MySQL** (MySQL Workbench)
+- Data cleaning and standardization
+- CTEs and window functions (`ROW_NUMBER() OVER (PARTITION BY ...)`)
+- Self-joins to fill missing values
+- String functions (`TRIM`, `LIKE`) and date conversion (`STR_TO_DATE`)
+- `ALTER TABLE`, `UPDATE`, `DELETE`, `CREATE TABLE ... LIKE`
 
-Fill these in by running the queries on your own data.
+## Dataset
 
-| Stage | Rows |
-|---|---|
-| Raw table (`layoffs`) | [  ] |
-| After removing duplicates | [  ] |
-| After deleting rows with no layoff figures | [  ] |
+- **Contents:** company, location, industry, total laid off, percentage laid off, date, funding stage, country and funds raised (in millions).
+- **Source:** Layoffs dataset.
+
+## Cleaning Steps
+
+| # | Step | What was done |
+|---|------|---------------|
+| 1 | **Create staging table** | Copied the raw `layoffs` table into `layoffs_staging` so the original stays untouched. |
+| 2 | **Remove duplicates** | Used `ROW_NUMBER()` partitioned across all columns. Because MySQL cannot delete from a CTE, the numbered rows were loaded into `layoffs_staging2` and rows with `row_num > 1` were deleted. |
+| 3 | **Standardize data** | Trimmed whitespace in `company`, merged `Crypto` variants in `industry`, removed the trailing period from `United States.`, and fixed corrupted characters in `location` (Düsseldorf, Florianópolis). |
+| 4 | **Convert date** | Converted `date` from text (`m/d/Y`) to a proper `DATE` type using `STR_TO_DATE`. |
+| 5 | **Handle NULL and blank values** | Converted blank `industry` values to `NULL`, then filled them by self-joining on `company` where another record had the industry. |
+| 6 | **Remove unnecessary data** | Deleted rows where both `total_laid_off` and `percentage_laid_off` were `NULL`, and dropped the helper `row_num` column. |
+
+## Key Techniques
+
+**Removing duplicates with a window function**
 
 ```sql
-SELECT COUNT(*) FROM layoffs;
-SELECT COUNT(*) FROM layoffs_staging2;
+SELECT *,
+ROW_NUMBER() OVER (
+    PARTITION BY company, location, industry, total_laid_off,
+                 percentage_laid_off, `date`, stage, country,
+                 funds_raised_millions
+) AS row_num
+FROM layoffs_staging;
 ```
 
-Run the second query once after the duplicate step and once at the end. Number of industry values filled from other rows: [  ].
+**Filling missing values with a self-join**
 
-## Choices I made, and what they cost
+```sql
+UPDATE layoffs_staging2 t1
+JOIN layoffs_staging2 t2
+    ON t1.company = t2.company
+SET t1.industry = t2.industry
+WHERE t1.industry IS NULL
+  AND t2.industry IS NOT NULL;
+```
 
-- **Deleting rows with no layoff figures.** These rows have nothing to analyse, so I removed them. The cost is that those companies drop out of every total. If the aim were to keep a full record, I'd flag these rows instead of deleting them.
-- **Duplicates need all nine columns to match.** Two rows with the same company and date but a different stage or funding figure are kept, because they might be separate events.
-- **Filling industry from other rows** assumes a company has one industry. A company with a single row and no industry stays NULL.
 
-## SQL used
+## Results
 
-Staging tables, `ROW_NUMBER()` with a CTE, `TRIM`, `UPDATE` with `LIKE`, `STR_TO_DATE`, `ALTER TABLE ... MODIFY`, self-join `UPDATE`, `DELETE`.
+- Duplicate records removed.
+- Inconsistent industry, country and location values standardized.
+- `date` is a true `DATE` column, ready for time-based analysis.
+- Missing industries filled where another record of the same company provided the value.
+- Rows with no layoff information removed.
 
-## How to run
 
-1. Use MySQL 8 or later. The script uses window functions.
-2. Import the raw data into a table called `layoffs`.
-3. Run `data_cleaning.sql` from top to bottom. It changes `layoffs_staging2` in place, so reload the staging tables if you want to run it again.
 
-## Files
+## Author
 
-- `data_cleaning.sql`: the cleaning script
+**Nikita Maria Johnson**
+[LinkedIn](https://www.linkedin.com/) | [GitHub](https://github.com/)
