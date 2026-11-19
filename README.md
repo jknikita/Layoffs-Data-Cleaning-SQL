@@ -79,4 +79,4 @@ SELECT
 ## Author
 
 **Nikita Maria Johnson**
-[LinkedIn](https://www.linkedin.com/) | [GitHub](https://github.com/)
+[LinkedIn](https://www.linkedin.com/in/nikita2000) | [GitHub](https://github.com/Nikitaj-11)
